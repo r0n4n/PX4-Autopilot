@@ -239,7 +239,8 @@ ControlAllocator::update_effectiveness_source()
 			break;
 
 		case EffectivenessSource::ROVER_DIFFERENTIAL:
-			// rover_differential_control does allocation and publishes directly to actuator_motors topic
+			tmp = new ActuatorEffectivenessRoverDifferential();
+			// differential_drive_control does allocation and publishes directly to actuator_motors topic
 			break;
 
 		case EffectivenessSource::FIXED_WING:
@@ -393,7 +394,7 @@ ControlAllocator::Run()
 	if (_vehicle_thrust_setpoint_sub.update(&vehicle_thrust_setpoint)) {
 		_thrust_sp = matrix::Vector3f(vehicle_thrust_setpoint.xyz);
 
-		if (dt > 0.005f) {
+		if (dt > 5_ms) {
 			do_update = true;
 			_timestamp_sample = vehicle_thrust_setpoint.timestamp_sample;
 		}
