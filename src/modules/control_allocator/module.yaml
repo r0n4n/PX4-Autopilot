@@ -30,7 +30,6 @@ parameters:
                 10: Helicopter (tail ESC)
                 11: Helicopter (tail Servo)
                 12: Helicopter (Coaxial)
-                13: Rover (Mecanum)
             default: 0
 
         CA_METHOD:
@@ -951,11 +950,11 @@ mixer:
                   - actuator_type: 'motor'
                     instances:
                       - name: 'Throttle'
-                        position: [ -1, 0, 0 ]
+                        position: [ -1., 0, 0 ]
                   - actuator_type: 'servo'
                     instances:
                       - name: 'Steering'
-                        position: [ 1, 0, 0 ]
+                        position: [ 1., 0, 0 ]
 
             6: # Rover (Differential)
                 title: 'Rover (Differential)'
@@ -963,9 +962,9 @@ mixer:
                   - actuator_type: 'motor'
                     instances:
                       - name: 'Right Motor'
-                        position: [ 0, 1, 0 ]
+                        position: [ 0, 1., 0 ]
                       - name: 'Left Motor'
-                        position: [ 0, -1, 0 ]
+                        position: [ 0, -1., 0 ]
 
             7: # Motors (6DOF)
                 actuators:
@@ -1155,3 +1154,14 @@ mixer:
                         position: [ -1, 1, 0 ]
                       - name: 'Left Motor Back'
                         position: [ -1, -1, 0 ]
+             14: # Boat (Differential)
+                            title: 'Boat (Differential)'
+                            actuators:
+                              - actuator_type: 'motor'
+                                instances:
+                                  - name: 'Right Motor'
+                                    position: [ 0, 1., 0 ]
+                                  - name: 'Left Motor'
+                                    position: [ 0, -1., 0 ]
+                        
+                        
