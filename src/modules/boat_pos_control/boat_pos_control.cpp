@@ -156,12 +156,21 @@ void BoatPosControl::Run()
 	if (_armed && _position_ctrl_ena){
 		if (_local_pos_sub.update(&_local_pos)) {
 			_manual_control_setpoint_sub.copy(&_manual_control_setpoint);
+			_vehicle_status_sub.copy(&vehicle_status);
+
+			float speed_sp;
 
 			// Velocity in body frame
 			const Dcmf R_to_body(Quatf(_vehicle_att.q).inversed());
 			const Vector3f vel = R_to_body * Vector3f(_local_pos.vx, _local_pos.vy, _local_pos.vz);
 			float speed = vel(0);
-			float speed_sp = distance_to_next_wp*_param_usv_pos_p.get() ;
+
+			if(vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION){
+		            speed_sp = float(_position_setpoint_triplet.current.cruising_speed) ;
+			}
+			else{
+			   speed_sp = distance_to_next_wp*_param_usv_pos_p.get() ;
+			}
 
 			// Adjust the setpoint to take the shortest path
 			float heading_error = desired_heading - yaw;

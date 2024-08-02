@@ -62,6 +62,7 @@
 #include <uORB/topics/position_setpoint_triplet.h>
 #include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/vehicle_attitude.h>
+#include <uORB/topics/vehicle_status.h>
 
 #include <uORB/uORB.h>
 #include <uORB/topics/debug_key_value.h>
@@ -112,6 +113,7 @@ private:
 
 	// Subscriptions
 	uORB::Subscription _vehicle_control_mode_sub{ORB_ID(vehicle_control_mode)};
+	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
 	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
 	uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
 	uORB::Subscription _local_pos_sub{ORB_ID(vehicle_local_position)};
@@ -143,6 +145,7 @@ private:
 	bool _armed = false;
 	bool _position_ctrl_ena = false;
 	vehicle_control_mode_s vehicle_control_mode;
+	vehicle_status_s vehicle_status;
 	//DifferentialDriveGuidance _differential_drive_guidance{this};
 
 	DEFINE_PARAMETERS((ParamFloat<px4::params::USV_SPEED_P>) _param_usv_speed_p,
