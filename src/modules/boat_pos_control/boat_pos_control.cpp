@@ -151,7 +151,7 @@ void BoatPosControl::Run()
 					  current_waypoint(0),
 					  current_waypoint(1));
 
-	float desired_heading = 0;
+	float desired_heading_hold = 0 ;
 
 	//if (vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER  && _last_vehicle_status.nav_state !=vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER){
 	//	desired_heading = yaw; // the yaw setpoint is the yaw measured when the vehicle enters in Loiter mode
@@ -213,6 +213,7 @@ void BoatPosControl::Run()
 			//once position reached
 			if (distance_to_next_wp<_param_usv_dist_epsi.get()) {
 				_currentState = GuidanceState::GOAL_REACHED;
+				desired_heading_hold = yaw ;
 			}
 
 			// adjust setpoints according to the step ongoing
@@ -230,7 +231,7 @@ void BoatPosControl::Run()
 			}
 
 			case GuidanceState::GOAL_REACHED:
-				desired_heading = yaw; // keep the last direction
+				desired_heading = desired_heading_hold; // keep the last direction
 				speed_sp = 0.0f;
 				break;
 			}
@@ -261,7 +262,7 @@ void BoatPosControl::Run()
 			// manual command used for testing
 			_manual_control_setpoint_sub.copy(&_manual_control_setpoint);
 			//v_thrust_sp.xyz[0] = math::constrain(_manual_control_setpoint.throttle, -_param_usv_thr_max.get(), _param_usv_thr_max.get()) ; // adjusting manual setpoint until the range is properly defined in the Mavlink interface
-			v_thrust_sp.xyz[0] = 0;
+			//v_thrust_sp.xyz[0] = 0;
 			_vehicle_thrust_setpoint_pub.publish(v_thrust_sp);
 
 			//v_torque_sp.xyz[2] = math::constrain(-_manual_control_setpoint.roll,-_param_usv_trq_max.get(),_param_usv_trq_max.get());
