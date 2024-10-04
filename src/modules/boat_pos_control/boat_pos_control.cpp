@@ -198,12 +198,12 @@ void BoatPosControl::Run()
 				else{
 					desired_heading = desired_heading + M_PI_F;
 				}
+				heading_error = desired_heading - yaw;
 				backward = true;
 			}
 
 
-			dbg.value = backward;
-	       		orb_publish(ORB_ID(debug_key_value), pub_dbg, &dbg);
+
 
 
 			if (_current_waypoint != current_waypoint) {
@@ -237,31 +237,31 @@ void BoatPosControl::Run()
 			}
 
 
-
+			if (backward){
+				speed_sp = -speed_sp;
+			}
+			dbg.value = speed_sp;
+	       		orb_publish(ORB_ID(debug_key_value), pub_dbg, &dbg);
 			// Speed control
-			speed_sp = math::constrain(speed_sp, 0.0f, _param_usv_speed_max.get());
+			speed_sp = math::constrain(speed_sp, -_param_usv_speed_max.get(), _param_usv_speed_max.get());
 			float _thrust = _param_usv_speed_ffg.get()*speed + pid_calculate(&_velocity_pid, speed_sp, speed, 0, dt);
-			_thrust = math::constrain(_thrust, -1.0f, 0.9f);
 
 			// direction control
 			float _torque_sp = pid_calculate(&_yaw_rate_pid, desired_heading, yaw, 0, dt);
 			_torque_sp = math::constrain(_torque_sp, -1.0f, 1.0f);
 
-			// publish torque and thurst commands
-			if (backward){
-				v_thrust_sp.xyz[0] = -_thrust;
-			}
-			else {
-				v_thrust_sp.xyz[0] = _thrust;
-			}
 
-			v_torque_sp.xyz[2] = -_torque_sp;
+			// publish torque and thurst commands
+			//v_torque_sp.xyz[2] = -_torque_sp;
+			v_torque_sp.xyz[2] = -_torque_sp - _manual_control_setpoint.roll; // disturbance for testing
+
 			//_vehicle_thrust_setpoint_pub.publish(v_thrust_sp);
 			//_vehicle_torque_setpoint_pub.publish(v_torque_sp);
 
 			// manual command used for testing
 			_manual_control_setpoint_sub.copy(&_manual_control_setpoint);
 			//v_thrust_sp.xyz[0] = math::constrain(_manual_control_setpoint.throttle, -_param_usv_thr_max.get(), _param_usv_thr_max.get()) ; // adjusting manual setpoint until the range is properly defined in the Mavlink interface
+			v_thrust_sp.xyz[0] = _thrust;
 			//v_thrust_sp.xyz[0] = 0;
 			_vehicle_thrust_setpoint_pub.publish(v_thrust_sp);
 
