@@ -121,6 +121,9 @@ void BoatPosControl::Run()
 	const Quatf q{_vehicle_att.q};
 	float yaw = Eulerf(q).psi();
 
+	bool backward = false;
+
+
 
 
 	if (_vehicle_control_mode_sub.updated()) {
@@ -148,8 +151,15 @@ void BoatPosControl::Run()
 					  current_waypoint(0),
 					  current_waypoint(1));
 
-	float desired_heading = get_bearing_to_next_waypoint(global_position(0), global_position(1), current_waypoint(0),
+	float desired_heading = 0;
+
+	//if (vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER  && _last_vehicle_status.nav_state !=vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER){
+	//	desired_heading = yaw; // the yaw setpoint is the yaw measured when the vehicle enters in Loiter mode
+	//}else {
+	desired_heading = get_bearing_to_next_waypoint(global_position(0), global_position(1), current_waypoint(0),
 				current_waypoint(1));
+	//}
+
 
 
 
@@ -180,6 +190,22 @@ void BoatPosControl::Run()
 				heading_error = new_heading_error;
 			}
 
+			// select between forward and backward heading
+			if (abs(heading_error)>(M_PI_F/2)){
+				if (desired_heading>0){
+					desired_heading = desired_heading - M_PI_F;
+				}
+				else{
+					desired_heading = desired_heading + M_PI_F;
+				}
+				backward = true;
+			}
+
+
+			dbg.value = backward;
+	       		orb_publish(ORB_ID(debug_key_value), pub_dbg, &dbg);
+
+
 			if (_current_waypoint != current_waypoint) {
 				_currentState = GuidanceState::TURNING;
 			}
@@ -209,8 +235,7 @@ void BoatPosControl::Run()
 				break;
 			}
 
-			dbg.value = heading_error;
-			orb_publish(ORB_ID(debug_key_value), pub_dbg, &dbg);
+
 
 			// Speed control
 			speed_sp = math::constrain(speed_sp, 0.0f, _param_usv_speed_max.get());
@@ -222,9 +247,24 @@ void BoatPosControl::Run()
 			_torque_sp = math::constrain(_torque_sp, -1.0f, 1.0f);
 
 			// publish torque and thurst commands
-			v_thrust_sp.xyz[0] = _thrust;
+			if (backward){
+				v_thrust_sp.xyz[0] = -_thrust;
+			}
+			else {
+				v_thrust_sp.xyz[0] = _thrust;
+			}
+
 			v_torque_sp.xyz[2] = -_torque_sp;
+			//_vehicle_thrust_setpoint_pub.publish(v_thrust_sp);
+			//_vehicle_torque_setpoint_pub.publish(v_torque_sp);
+
+			// manual command used for testing
+			_manual_control_setpoint_sub.copy(&_manual_control_setpoint);
+			//v_thrust_sp.xyz[0] = math::constrain(_manual_control_setpoint.throttle, -_param_usv_thr_max.get(), _param_usv_thr_max.get()) ; // adjusting manual setpoint until the range is properly defined in the Mavlink interface
+			v_thrust_sp.xyz[0] = 0;
 			_vehicle_thrust_setpoint_pub.publish(v_thrust_sp);
+
+			//v_torque_sp.xyz[2] = math::constrain(-_manual_control_setpoint.roll,-_param_usv_trq_max.get(),_param_usv_trq_max.get());
 			_vehicle_torque_setpoint_pub.publish(v_torque_sp);
 
 			//_differential_drive_guidance.computeGuidance(yaw,vel(0),dt);
@@ -249,6 +289,7 @@ void BoatPosControl::Run()
 		v_torque_sp.xyz[2] = 0.f;
 		_vehicle_torque_setpoint_pub.publish(v_torque_sp);
 	}
+	_last_vehicle_status = vehicle_status;
 
 }
 
