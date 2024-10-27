@@ -66,6 +66,7 @@
 
 #include <uORB/uORB.h>
 #include <uORB/topics/debug_key_value.h>
+#include <uORB/topics/boat_position_setpoint.h>
 #include <string.h>
 
 //#include "differential_drive/DifferentialDriveGuidance/DifferentialDriveGuidance.hpp"
@@ -82,7 +83,8 @@ using namespace time_literals;
 enum class GuidanceState {
 	TURNING, ///< The vehicle is currently turning.
 	DRIVING, ///< The vehicle is currently driving straight.
-	GOAL_REACHED ///< The vehicle has reached its goal.
+	HOLD, ///< The vehicle has reached its goal, the speed is set to zero and the direction is held
+	STABILIZING ///< ajusting the direction and speed to correct the position
 };
 
 
@@ -124,6 +126,7 @@ private:
 	// Publications
 	uORB::Publication<vehicle_thrust_setpoint_s>	_vehicle_thrust_setpoint_pub{ORB_ID(vehicle_thrust_setpoint)};
 	uORB::Publication<vehicle_torque_setpoint_s>	_vehicle_torque_setpoint_pub{ORB_ID(vehicle_torque_setpoint)};
+	uORB::Publication<boat_position_setpoint_s>	_boat_position_setpoint_pub{ORB_ID(boat_position_setpoint)};
 
 	// Performance (perf) counters
 	perf_counter_t	_loop_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": cycle")};
@@ -146,6 +149,8 @@ private:
 	bool _position_ctrl_ena = false;
 	vehicle_control_mode_s vehicle_control_mode;
 	vehicle_status_s vehicle_status;
+	vehicle_status_s _last_vehicle_status; ///< The last state of guidance.
+	float desired_heading = 0 ;
 	//DifferentialDriveGuidance _differential_drive_guidance{this};
 
 	DEFINE_PARAMETERS((ParamFloat<px4::params::USV_SPEED_P>) _param_usv_speed_p,
@@ -153,6 +158,7 @@ private:
 	(ParamFloat<px4::params::USV_YAW_RATE_I>) _param_usv_yaw_i,
 	(ParamFloat<px4::params::USV_YAW_EPSI>) _param_usv_yaw_epsi,
 	(ParamFloat<px4::params::USV_DIST_EPSI>) _param_usv_dist_epsi,
+	(ParamFloat<px4::params::USV_DIST_LOITER>) _param_usv_dist_loiter,
 	(ParamFloat<px4::params::USV_POS_P>) _param_usv_pos_p,
 	(ParamFloat<px4::params::USV_SPEED_MAX>) _param_usv_speed_max,
 	(ParamFloat<px4::params::USV_SPEED_FFG>) _param_usv_speed_ffg,

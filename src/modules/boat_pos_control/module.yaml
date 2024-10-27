@@ -75,6 +75,15 @@ parameters:
         increment: 0.001
         decimal: 3
         default: 1
+      USV_DIST_LOITER:
+        description:
+          short: Distance to trigger the stabilization mode
+        type: float
+        min: 0.001
+        max: 10
+        increment: 0.001
+        decimal: 3
+        default: 2
       USV_THR_MAX:
         description:
           short: Thrust max

@@ -118,6 +118,11 @@ void BoatPosControl::Run()
 	v_torque_sp.xyz[0] = 0.f;
 	v_torque_sp.xyz[1] = 0.f;
 
+	boat_position_setpoint_s boat_pos_sp{};
+	boat_pos_sp.timestamp = hrt_absolute_time();
+	boat_pos_sp.state = 0;
+	boat_pos_sp.vx = 0.f ;
+
 	const Quatf q{_vehicle_att.q};
 	float yaw = Eulerf(q).psi();
 
@@ -160,6 +165,14 @@ void BoatPosControl::Run()
 				current_waypoint(1));
 	//}
 
+	// Velocity in body frame
+	const Dcmf R_to_body(Quatf(_vehicle_att.q).inversed());
+	const Vector3f vel = R_to_body * Vector3f(_local_pos.vx, _local_pos.vy, _local_pos.vz);
+	float speed = vel(0);
+	boat_pos_sp.vx = speed;
+	boat_pos_sp.yaw_sp = desired_heading;
+	boat_pos_sp.yaw = yaw;
+	boat_pos_sp.distance_to_wp = distance_to_next_wp;
 
 
 
@@ -169,11 +182,6 @@ void BoatPosControl::Run()
 			_vehicle_status_sub.copy(&vehicle_status);
 
 			float speed_sp;
-
-			// Velocity in body frame
-			const Dcmf R_to_body(Quatf(_vehicle_att.q).inversed());
-			const Vector3f vel = R_to_body * Vector3f(_local_pos.vx, _local_pos.vy, _local_pos.vz);
-			float speed = vel(0);
 
 			if(vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION){
 		            speed_sp = float(_position_setpoint_triplet.current.cruising_speed) ;
@@ -190,17 +198,7 @@ void BoatPosControl::Run()
 				heading_error = new_heading_error;
 			}
 
-			// select between forward and backward heading
-			if (abs(heading_error)>(M_PI_F/2)){
-				if (desired_heading>0){
-					desired_heading = desired_heading - M_PI_F;
-				}
-				else{
-					desired_heading = desired_heading + M_PI_F;
-				}
-				heading_error = desired_heading - yaw;
-				backward = true;
-			}
+
 
 
 
@@ -212,7 +210,7 @@ void BoatPosControl::Run()
 
 			//once position reached
 			if (distance_to_next_wp<_param_usv_dist_epsi.get()) {
-				_currentState = GuidanceState::GOAL_REACHED;
+				_currentState = GuidanceState::HOLD;
 				desired_heading_hold = yaw ;
 			}
 
@@ -230,20 +228,48 @@ void BoatPosControl::Run()
 				break;
 			}
 
-			case GuidanceState::GOAL_REACHED:
+			case GuidanceState::HOLD:{
 				desired_heading = desired_heading_hold; // keep the last direction
 				speed_sp = 0.0f;
+				if (distance_to_next_wp>_param_usv_dist_loiter.get()) { // if the boat is moving from the desired position
+					_currentState = GuidanceState::STABILIZING; // we move to the stabilizing mode
+				}
 				break;
 			}
 
-
-			if (backward){
-				speed_sp = -speed_sp;
+			case GuidanceState::STABILIZING:{
+				// select between forward and backward heading
+				if (abs(heading_error)>(M_PI_F/2)){
+					if (desired_heading>0){
+						desired_heading = desired_heading - M_PI_F;
+					}
+					else{
+						desired_heading = desired_heading + M_PI_F;
+					}
+					heading_error = desired_heading - yaw;
+					backward = true;
+				}
+				if (backward){
+					speed_sp = -speed_sp;
+				}
+				//once position reached
+				if (distance_to_next_wp<_param_usv_dist_epsi.get()) {
+					_currentState = GuidanceState::HOLD;
+					desired_heading_hold = yaw ;
+					backward = false;
+				}
 			}
-			dbg.value = speed_sp;
+			}
+			boat_pos_sp.state = uint8_t(_currentState);
+
+
+
+			dbg.value = float(_currentState);
 	       		orb_publish(ORB_ID(debug_key_value), pub_dbg, &dbg);
+
 			// Speed control
 			speed_sp = math::constrain(speed_sp, -_param_usv_speed_max.get(), _param_usv_speed_max.get());
+			boat_pos_sp.vx_sp = speed_sp;
 			float _thrust = _param_usv_speed_ffg.get()*speed + pid_calculate(&_velocity_pid, speed_sp, speed, 0, dt);
 
 			// direction control
@@ -261,7 +287,7 @@ void BoatPosControl::Run()
 			// manual command used for testing
 			_manual_control_setpoint_sub.copy(&_manual_control_setpoint);
 			//v_thrust_sp.xyz[0] = math::constrain(_manual_control_setpoint.throttle, -_param_usv_thr_max.get(), _param_usv_thr_max.get()) ; // adjusting manual setpoint until the range is properly defined in the Mavlink interface
-			v_thrust_sp.xyz[0] = _thrust;
+			v_thrust_sp.xyz[0] = _thrust + _manual_control_setpoint.throttle;
 			//v_thrust_sp.xyz[0] = 0;
 			_vehicle_thrust_setpoint_pub.publish(v_thrust_sp);
 
@@ -290,6 +316,7 @@ void BoatPosControl::Run()
 		v_torque_sp.xyz[2] = 0.f;
 		_vehicle_torque_setpoint_pub.publish(v_torque_sp);
 	}
+	_boat_position_setpoint_pub.publish(boat_pos_sp);
 	_last_vehicle_status = vehicle_status;
 
 }
