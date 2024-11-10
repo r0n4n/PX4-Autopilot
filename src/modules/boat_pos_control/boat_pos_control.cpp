@@ -172,6 +172,8 @@ void BoatPosControl::Run()
 	boat_pos_sp.vx = speed;
 	boat_pos_sp.yaw_sp = desired_heading;
 	boat_pos_sp.yaw = yaw;
+
+
 	boat_pos_sp.distance_to_wp = distance_to_next_wp;
 
 
@@ -181,7 +183,7 @@ void BoatPosControl::Run()
 			_manual_control_setpoint_sub.copy(&_manual_control_setpoint);
 			_vehicle_status_sub.copy(&vehicle_status);
 
-			float speed_sp;
+
 
 			if(vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION){
 		            speed_sp = float(_position_setpoint_triplet.current.cruising_speed) ;
@@ -203,12 +205,18 @@ void BoatPosControl::Run()
 
 
 
-
+			// state machine
 			if (_current_waypoint != current_waypoint) {
-				_currentState = GuidanceState::TURNING;
+				if (fabsf(heading_error) < _param_usv_yaw_epsi.get()) {
+					_currentState = GuidanceState::DRIVING;
+				}
+				else{
+					_currentState = GuidanceState::TURNING;
+				}
 			}
 
-			//once position reached
+
+			// once position reached
 			if (distance_to_next_wp<_param_usv_dist_epsi.get()) {
 				_currentState = GuidanceState::HOLD;
 				desired_heading_hold = yaw ;
@@ -260,16 +268,14 @@ void BoatPosControl::Run()
 				}
 			}
 			}
-			boat_pos_sp.state = uint8_t(_currentState);
 
 
 
-			dbg.value = float(_currentState);
-	       		orb_publish(ORB_ID(debug_key_value), pub_dbg, &dbg);
+
+
 
 			// Speed control
 			speed_sp = math::constrain(speed_sp, -_param_usv_speed_max.get(), _param_usv_speed_max.get());
-			boat_pos_sp.vx_sp = speed_sp;
 			float _thrust = _param_usv_speed_ffg.get()*speed + pid_calculate(&_velocity_pid, speed_sp, speed, 0, dt);
 
 			// direction control
@@ -297,6 +303,12 @@ void BoatPosControl::Run()
 			//_differential_drive_guidance.computeGuidance(yaw,vel(0),dt);
 			_current_waypoint = current_waypoint;
 		}
+		boat_pos_sp.state = uint8_t(_currentState);
+		boat_pos_sp.vx_sp = speed_sp;
+		boat_pos_sp.yaw_sp = desired_heading;
+		boat_pos_sp.yaw = yaw;
+		dbg.value = float(boat_pos_sp.state);
+	       	orb_publish(ORB_ID(debug_key_value), pub_dbg, &dbg);
 	}
 	else if (_armed && vehicle_control_mode.flag_control_manual_enabled) {
 		_manual_control_setpoint_sub.copy(&_manual_control_setpoint);
@@ -316,6 +328,7 @@ void BoatPosControl::Run()
 		v_torque_sp.xyz[2] = 0.f;
 		_vehicle_torque_setpoint_pub.publish(v_torque_sp);
 	}
+
 	_boat_position_setpoint_pub.publish(boat_pos_sp);
 	_last_vehicle_status = vehicle_status;
 

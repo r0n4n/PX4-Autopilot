@@ -141,6 +141,7 @@ private:
 	manual_control_setpoint_s		_manual_control_setpoint{};			    /**< r/c channel data */
 	vehicle_attitude_s			_vehicle_att{};
 	float yaw_setpoint;
+	float speed_sp;
 	GuidanceState _currentState; ///< The current state of guidance.
 	matrix::Vector2d _current_waypoint; ///< The current waypoint.
 
