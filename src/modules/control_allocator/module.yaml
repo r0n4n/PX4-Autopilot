@@ -1154,14 +1154,15 @@ mixer:
                         position: [ -1, 1, 0 ]
                       - name: 'Left Motor Back'
                         position: [ -1, -1, 0 ]
-             14: # Boat (Differential)
-                            title: 'Boat (Differential)'
-                            actuators:
-                              - actuator_type: 'motor'
-                                instances:
-                                  - name: 'Right Motor'
-                                    position: [ 0, 1., 0 ]
-                                  - name: 'Left Motor'
-                                    position: [ 0, -1., 0 ]
-                        
-                        
+
+            14: # Boat (Differential)
+                title: 'Boat (Differential)'
+                actuators:
+                  - actuator_type: 'motor'
+                    instances:
+                      - name: 'Right Motor'
+                        position: [ 0, 1., 0 ]
+                      - name: 'Left Motor'
+                        position: [ 0, -1., 0 ]
+
+

@@ -41,7 +41,7 @@
 
 #include <drivers/drv_hrt.h>
 #include <lib/perf/perf_counter.h>
-#include <lib/pid/pid.h>
+#include <lib/pid/PID.hpp>
 #include <lib/mathlib/mathlib.h>
 #include <matrix/matrix/math.hpp>
 //#include <lib/matrix/matrix/quaternion.hpp>
@@ -133,8 +133,8 @@ private:
 	perf_counter_t	_loop_interval_perf{perf_alloc(PC_INTERVAL, MODULE_NAME": interval")};
 
 
-	PID_t _velocity_pid; ///< The PID controller for velocity.
-	PID_t _yaw_rate_pid; ///< The PID controller for yaw rate.
+	PID _velocity_pid; ///< The PID controller for velocity.
+	PID _yaw_rate_pid; ///< The PID controller for yaw rate.
 	vehicle_local_position_s		_local_pos{};			/**< global vehicle position */
 	position_setpoint_triplet_s _position_setpoint_triplet{};
 	vehicle_global_position_s _vehicle_global_position{};

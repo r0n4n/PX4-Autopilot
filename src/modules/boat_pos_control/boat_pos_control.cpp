@@ -64,22 +64,13 @@ void BoatPosControl::parameters_update()
 		updateParams();
 	}
 	// init velocity controller
-	pid_init(&_velocity_pid, PID_MODE_DERIVATIV_NONE, 0.001f);
-	pid_set_parameters(&_velocity_pid,
-			   _param_usv_speed_p.get(),  // Proportional gain
-			   0,  // Integral gain
-			   0,  // Derivative gain
-			   2,  // Integral limit
-			   200);  // Output limit
+	_velocity_pid.setGains(_param_usv_speed_p.get(),0,0);
+	_velocity_pid.setOutputLimit(200);
+
 
 	// init yaw rate controller
-	pid_init(&_yaw_rate_pid, PID_MODE_DERIVATIV_NONE, 0.001f);
-	pid_set_parameters(&_yaw_rate_pid,
-			   _param_usv_yaw_rate_p.get(),  // Proportional gain
-			   _param_usv_yaw_i.get(),  // Integral gain
-			   0,  // Derivative gain
-			   1,  // Integral limit
-			   200);  // Output limit
+	_yaw_rate_pid.setGains(_param_usv_yaw_rate_p.get(),_param_usv_yaw_i.get(),0);
+	_velocity_pid.setOutputLimit(200);
 }
 
 void BoatPosControl::vehicle_attitude_poll()
@@ -276,10 +267,12 @@ void BoatPosControl::Run()
 
 			// Speed control
 			speed_sp = math::constrain(speed_sp, -_param_usv_speed_max.get(), _param_usv_speed_max.get());
-			float _thrust = _param_usv_speed_ffg.get()*speed + pid_calculate(&_velocity_pid, speed_sp, speed, 0, dt);
+			_velocity_pid.setSetpoint(speed_sp);
+			float _thrust = _param_usv_speed_ffg.get()*speed + _velocity_pid.update(speed, dt);
 
 			// direction control
-			float _torque_sp = pid_calculate(&_yaw_rate_pid, desired_heading, yaw, 0, dt);
+			_yaw_rate_pid.setSetpoint(desired_heading);
+			float _torque_sp = _yaw_rate_pid.update(yaw, dt);
 			_torque_sp = math::constrain(_torque_sp, -1.0f, 1.0f);
 
 
